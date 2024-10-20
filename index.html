@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dino T-Rex Clone</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            background-color: orange;
+        }
+
+        #gameArea {
+            position: relative;
+            width: 100%;
+            height: 290px;
+            background-color: #f0f0f0;
+            overflow: hidden;
+        }
+
+        #dino {
+            position: absolute;
+            bottom: 0;
+            left: 50px;
+            width: 100px;
+            height: auto;
+        }
+
+        .obstacle {
+            position: absolute;
+            bottom: 0;
+            width: 40px;
+            height: 60px;
+            background-color: #555;
+        }
+
+        #score {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        #controls {
+            position: absolute;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        #controls button {
+            font-size: 16px;
+            padding: 10px;
+            margin: 5px;
+        }
+
+        #jumpButton {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 16px;
+            padding: 15px;
+        }
+
+        .music-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .music-button {
+            padding: 10px;
+            font-size: 16px;
+            background-color: black;
+            color: #fff;
+            border: none;
+            border-radius: 2px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameArea">
+        <div id="score">Score: 0</div>
+        <img id="dino" src="imgs/elephant-422_256.gif" alt="Dino">
+        <div id="controls">
+            <button class="music-button" id="playMusic">Play Music</button>
+            <button class="music-button" id="pauseMusic">Pause Music</button>
+            <button id="startButton">Start</button>
+            <button id="pauseButton">Pause</button>
+        </div>
+    </div>
+    <button id="jumpButton">Jump</button>
+    <script>
+        let dino = document.getElementById('dino');
+        let gameArea = document.getElementById('gameArea');
+        let scoreDisplay = document.getElementById('score');
+        let startButton = document.getElementById('startButton');
+        let pauseButton = document.getElementById('pauseButton');
+        let jumpButton = document.getElementById('jumpButton');
+        let isJumping = false;
+        let gravity = 0.9;
+        let score = 0;
+        let gameInterval;
+        let obstacleInterval;
+        let speed = 5;
+        let isPaused = false;
+
+        function handleJump() {
+            if (!isJumping) {
+                isJumping = true;
+                let jumpHeight = 150;
+                let position = 0;
+                let upTimer = setInterval(function() {
+                    if (position >= jumpHeight) {
+                        clearInterval(upTimer);
+                        let downTimer = setInterval(function() {
+                            if (position <= 0) {
+                                clearInterval(downTimer);
+                                isJumping = false;
+                            }
+                            position -= 5;
+                            dino.style.bottom = position + 'px';
+                        }, 20);
+                    }
+                    position += 5;
+                    dino.style.bottom = position + 'px';
+                }, 20);
+            }
+        }
+
+        function createObstacle() {
+            let obstacle = document.createElement('div');
+            obstacle.classList.add('obstacle');
+            gameArea.appendChild(obstacle);
+            let obstaclePosition = gameArea.offsetWidth;
+            obstacle.style.left = obstaclePosition + 'px';
+
+            let moveObstacle = setInterval(function() {
+                if (isPaused) return;
+
+                if (obstaclePosition < -40) {
+                    clearInterval(moveObstacle);
+                    gameArea.removeChild(obstacle);
+                } else if (obstaclePosition < 130 && obstaclePosition > 50 && !isJumping) {
+                    clearInterval(moveObstacle);
+                    clearInterval(gameInterval);
+                    clearTimeout(obstacleInterval);
+                    let gameOverPopup = document.createElement('div');
+                    gameOverPopup.style.position = 'fixed';
+                    gameOverPopup.style.top = '50%';
+                    gameOverPopup.style.left = '50%';
+                    gameOverPopup.style.transform = 'translate(-50%, -50%)';
+                    gameOverPopup.style.backgroundColor = 'white';
+                    gameOverPopup.style.padding = '20px';
+                    gameOverPopup.style.textAlign = 'center';
+                    gameOverPopup.style.border = '2px solid black';
+                    gameOverPopup.innerHTML = `
+                        <p>Game Over! Your score: ${score}</p>
+                        <img src="imgs/1.gif" alt="Game Over">
+                        <br>
+                        <button onclick="location.reload()">Restart Game</button>
+                    `;
+                    document.body.appendChild(gameOverPopup);
+                    resetGame();
+                }
+                obstaclePosition -= speed;
+                obstacle.style.left = obstaclePosition + 'px';
+            }, 20);
+
+            let nextObstacleDelay = Math.random() * 2000 + 1000;
+            if (score > 100) {
+                nextObstacleDelay = Math.random() * 1500 + 500;
+            }
+            obstacleInterval = setTimeout(createObstacle, nextObstacleDelay);
+        }
+
+        function updateScore() {
+            if (!isPaused) {
+                score++;
+                scoreDisplay.innerText = 'Score: ' + score;
+                if (score % 100 === 0) {
+                    speed += 1;
+                }
+            }
+        }
+
+        function startGame() {
+            if (!gameInterval) {
+                gameInterval = setInterval(updateScore, 100);
+                createObstacle();
+            }
+            isPaused = false;
+        }
+
+        function pauseGame() {
+            isPaused = true;
+        }
+
+        function resetGame() {
+            clearInterval(gameInterval);
+            clearTimeout(obstacleInterval);
+            let obstacles = document.querySelectorAll('.obstacle');
+            obstacles.forEach(obstacle => gameArea.removeChild(obstacle));
+            gameInterval = null;
+            score = 0;
+            speed = 5;
+            scoreDisplay.innerText = 'Score: ' + score;
+        }
+
+        startButton.addEventListener('click', startGame);
+        pauseButton.addEventListener('click', pauseGame);
+        document.addEventListener('keydown', (event) => {
+            if (event.keyCode === 32) handleJump();
+        });
+        jumpButton.addEventListener('click', handleJump);
+    </script>
+    <audio id="backgroundMusic" loop>
+        <source src="song/Songs to feel like the protagonist entering GOD-MODE 💎☠️.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+    <script>
+        const backgroundMusic = document.getElementById('backgroundMusic');
+        const playMusicButton = document.getElementById('playMusic');
+        const pauseMusicButton = document.getElementById('pauseMusic');
+
+        playMusicButton.addEventListener('click', () => {
+            backgroundMusic.play();
+        });
+
+        pauseMusicButton.addEventListener('click', () => {
+            backgroundMusic.pause();
+        });
+    </script>
+</body>
+</html>
